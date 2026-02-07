@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import type { KeyboardEvent, ChangeEvent } from "react";
 import { v4 as uuid } from "uuid";
 
 import { useChatStore } from "@/store/chatStore";
@@ -17,6 +18,7 @@ import { useTyping } from "@/hooks/useTyping";
 
 import { MessageList } from "@/components/shared/MessageList";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { ChatInput } from "@/components/shared/ChatInput";
 
 const EMPTY_MESSAGES: Message[] = [];
 
@@ -24,13 +26,14 @@ export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [threadId, setThreadId] = useState<string | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
   const online = useOnline();
 
   // initialize visitor thread
   useEffect(() => {
     setThreadId(getThreadId());
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpen(false);
       }
@@ -52,23 +55,25 @@ export function ChatWidget() {
     return allMessages[threadId] ?? EMPTY_MESSAGES;
   }, [allMessages, threadId]);
 
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last) return;
+
+    if (lastMessageIdRef.current === last.id) return;
+    lastMessageIdRef.current = last.id;
+
+    // 🔔 visitor hears agent ONLY on new message
+    if (last.sender === ROLE.AGENT) {
+      playSound();
+    }
+  }, [messages]);
+
   const lastMessage = messages[messages.length - 1];
 
   const showStatusForId =
     lastMessage && lastMessage.sender === ROLE.VISITOR
       ? lastMessage.id
       : undefined;
-
-  useEffect(() => {
-    const last = messages[messages.length - 1];
-
-    if (!last) return;
-
-    // 🔔 visitor hears agent
-    if (last.sender === ROLE.AGENT) {
-      playSound();
-    }
-  }, [messages]);
 
   const sendTyping = useTyping(threadId, ROLE.VISITOR);
 
@@ -125,36 +130,13 @@ export function ChatWidget() {
 
           {/* Input */}
           <div className="border-t border-gray-700 p-2">
-            <input
+            <ChatInput
               value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                sendTyping?.(true);
-                sendTyping?.(true);
-                clearTimeout((sendTyping as any)?._t);
-                (sendTyping as any)._t = setTimeout(() => {
-                  sendTyping?.(false);
-                }, 1200);
-              }}
-              onKeyDown={(e) => {
-                unlockSound();
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
               placeholder="Type a message…"
-              className="
-                w-full
-                rounded-md
-                border
-                border-gray-600
-                px-3
-                py-2
-                text-sm
-                placeholder-gray-400
-                focus:outline-none
-              "
+              onFocus={unlockSound}
+              onChange={setInput}
+              onTyping={sendTyping}
+              onSend={send}
             />
           </div>
         </div>

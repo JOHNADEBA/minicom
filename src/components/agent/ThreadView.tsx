@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 
 import { useChatStore } from "@/store/chatStore";
@@ -15,6 +15,7 @@ import { useTyping } from "@/hooks/useTyping";
 
 import { MessageList } from "@/components/shared/MessageList";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { ChatInput } from "../shared/ChatInput";
 
 const EMPTY_MESSAGES: readonly Message[] = [];
 
@@ -25,6 +26,7 @@ export function ThreadView({ threadId }: { threadId: string }) {
   const messages = useChatStore((s) => s.messages[threadId] ?? EMPTY_MESSAGES);
   const visitorLabel = getVisitorLabel(threadId);
   const lastMessage = messages[messages.length - 1];
+  const lastMessageIdRef = useRef<string | null>(null);
 
   const showStatusForId =
     lastMessage && lastMessage.sender === ROLE.AGENT
@@ -51,6 +53,11 @@ export function ThreadView({ threadId }: { threadId: string }) {
 
     if (!last) return;
 
+    // ❗ only react to NEW messages
+    if (lastMessageIdRef.current === last.id) return;
+
+    lastMessageIdRef.current = last.id;
+
     // 🔔 agent hears visitor
     if (last.sender === ROLE.VISITOR) {
       playSound();
@@ -75,6 +82,21 @@ export function ThreadView({ threadId }: { threadId: string }) {
     setInput("");
   };
 
+  const markUnreadAsRead = (threadId: string) => {
+    const store = useChatStore.getState();
+
+    store.messages[threadId]
+      ?.filter((m) => m.sender === ROLE.VISITOR && !m.read)
+      .forEach((m) => {
+        publish({
+          type: EVENT.MESSAGE_READ,
+          payload: { id: m.id, sender: ROLE.AGENT },
+        });
+      });
+
+    store.markThreadRead(threadId);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col ">
       <div className="px-4 py-3 border-b border-gray-700">
@@ -90,26 +112,16 @@ export function ThreadView({ threadId }: { threadId: string }) {
       )}
 
       <div className="border-t border-gray-700 p-3">
-        <input
+        <ChatInput
           value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            sendTyping?.(true);
-            sendTyping?.(true);
-            clearTimeout((sendTyping as any)?._t);
-            (sendTyping as any)._t = setTimeout(() => {
-              sendTyping?.(false);
-            }, 1200);
-          }}
-          onKeyDown={(e) => {
-            unlockSound();
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-          }}
           placeholder="Reply to visitor…"
-          className="w-full rounded-md border dark:placeholder-gray-400 border-gray-700 px-3 py-2 text-sm focus:outline-none"
+          onFocus={unlockSound}
+          onChange={(value) => {
+            setInput(value);
+            markUnreadAsRead(threadId);
+          }}
+          onTyping={sendTyping}
+          onSend={send}
         />
       </div>
     </div>
