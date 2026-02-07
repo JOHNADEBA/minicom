@@ -212,15 +212,7 @@ npm run test
 
 ## 🚀 Deployment (Vercel)
 
-This project is deployed on **Vercel**.
-
-To deploy your own version:
-
-1. Push the repository to GitHub
-2. Go to [https://vercel.com](https://vercel.com)
-3. Import the repository
-4. Use default Next.js settings
-5. Deploy
+This project is deployed on https://minicom-mu.vercel.app/agent and https://minicom-mu.vercel.app/visitor.
 
 No additional configuration is required.
 
