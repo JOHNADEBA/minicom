@@ -1,175 +1,117 @@
-'use client';
-import { useEffect, useState, useRef } from 'react';
-import { v4 as uuid } from 'uuid';
+"use client";
+import { useEffect, useState } from "react";
+import { v4 as uuid } from "uuid";
 
-import { useChatStore } from '@/store/chatStore';
-import { deliver, publish } from '@/lib/realtime';
-import { MessageBubble } from '@/components/shared/MessageBubble';
-import debounce from 'lodash.debounce';
-import { sendTyping } from '@/lib/realtime';
-import { getVisitorLabel } from '@/lib/visitorLabel';
+import { useChatStore } from "@/store/chatStore";
+
+import { deliver, publish } from "@/lib/realtime";
+import { getVisitorLabel } from "@/lib/visitorLabel";
+import { Message } from "@/lib/models";
+import { playSound, unlockSound } from "@/lib/sound";
+import { EVENT, MESSAGE_STATUS, ROLE } from "@/lib/constants";
+
+import { useOnline } from "@/hooks/useOnline";
+import { useTyping } from "@/hooks/useTyping";
+
+import { MessageList } from "@/components/shared/MessageList";
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
+
+const EMPTY_MESSAGES: readonly Message[] = [];
 
 export function ThreadView({ threadId }: { threadId: string }) {
-    const [input, setInput] = useState('');
-    const agentTypingRef = useRef<
-        ((typing: boolean) => void) | null
-    >(null);
-const PAGE_SIZE = 50;
-const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [input, setInput] = useState("");
+  const online = useOnline();
+  const typing = useChatStore((s) => s.typing[`${threadId}:${ROLE.VISITOR}`]);
+  const messages = useChatStore((s) => s.messages[threadId] ?? EMPTY_MESSAGES);
+  const visitorLabel = getVisitorLabel(threadId);
+  const lastMessage = messages[messages.length - 1];
 
+  const showStatusForId =
+    lastMessage && lastMessage.sender === ROLE.AGENT
+      ? lastMessage.id
+      : undefined;
 
-    const messages = useChatStore(
-        (s) => s.messages[threadId] ?? []
-    );
+  const sendTyping = useTyping(threadId, ROLE.AGENT);
 
-    const typing = useChatStore(
-        (s) => s.typing[`${threadId}:visitor`]
-    );
+  useEffect(() => {
+    messages
+      .filter((m) => m.sender === ROLE.VISITOR && !m.read)
+      .forEach((m) =>
+        publish({
+          type: EVENT.MESSAGE_READ,
+          payload: { id: m.id, sender: m.sender },
+        }),
+      );
 
-const visitorLabel = getVisitorLabel(threadId);
+    useChatStore.getState().markThreadRead(threadId);
+  }, [threadId]);
 
-const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const last = messages[messages.length - 1];
 
-useEffect(() => {
-  const on = () => setOnline(true);
-  const off = () => setOnline(false);
+    if (!last) return;
 
-  window.addEventListener('online', on);
-  window.addEventListener('offline', off);
-
-  setOnline(navigator.onLine);
-
-  return () => {
-    window.removeEventListener('online', on);
-    window.removeEventListener('offline', off);
-  };
-}, []);
-
-
-    useEffect(() => {
-        messages
-            .filter(
-                (m) =>
-                    m.sender === 'visitor' &&
-                    (m.status === 'delivered' || m.status === 'sent')
-            )
-            .forEach((m) => {
-                publish({
-                    type: 'MESSAGE_READ',
-                    payload: { id: m.id },
-                });
-            });
-
-            useChatStore.getState().markThreadRead(threadId);
-    }, [threadId]);
-
-    const lastMessageId = messages[messages.length - 1]?.id;
-
-    if (!agentTypingRef.current) {
-        agentTypingRef.current = debounce((t: boolean) => {
-            sendTyping({ threadId, sender: 'agent', typing: t });
-        }, 300);
+    // 🔔 agent hears visitor
+    if (last.sender === ROLE.VISITOR) {
+      playSound();
     }
+  }, [messages]);
 
-const visibleMessages = messages.slice(-visibleCount);
+  const send = () => {
+    if (!input.trim()) return;
 
-
-    const send = () => {
-        const msg = {
-            id: uuid(),
-            threadId,
-            sender: 'agent' as const,
-            body: input,
-            createdAt: Date.now(),
-            status: 'sending' as const,
-            read: true,
-        };
-
-        useChatStore.getState().sendMessage(msg);
-        deliver(msg);
-        setInput('');
+    const msg = {
+      id: uuid(),
+      threadId,
+      sender: ROLE.AGENT,
+      body: input,
+      createdAt: Date.now(),
+      status: MESSAGE_STATUS.SENDING,
+      read: true,
     };
 
-    return (
-  <div className="h-full flex flex-col bg-gray-900">
-    {/* Header */}
-    <div className="px-4 py-3 border-b border-gray-700 bg-gray-800">
-      <h3 className="font-medium">
-        {visitorLabel}
-      </h3>
-    </div>
+    useChatStore.getState().sendMessage(msg);
+    deliver(msg);
+    setInput("");
+  };
 
- {/* Banner */}
-    {!online && (
-  <div className="bg-yellow-600 text-black text-xs px-3 py-1">
-    You are offline. Messages will be sent when reconnected.
-  </div>
-)}
+  return (
+    <div className="flex h-full min-h-0 flex-col ">
+      <div className="px-4 py-3 border-b border-gray-700">
+        <h3 className="font-medium">{visitorLabel}</h3>
+      </div>
 
+      {!online && <OfflineBanner />}
 
-    {/* Messages */}
-    <div 
-  className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-900"
-  onScroll={(e) => {
-    const el = e.currentTarget;
-    if (el.scrollTop === 0 && visibleCount < messages.length) {
-      setVisibleCount((c) => c + PAGE_SIZE);
-    }
-  }}
->
-      {visibleMessages.map((m) => (
-        <MessageBubble
-          key={`${m.id}-${m.status}`}
-          message={m}
-          showStatus={Boolean(m.id === lastMessageId)}
-        />
-      ))}
+      <MessageList messages={messages} showStatusForId={showStatusForId} />
 
       {typing && (
-        <p className="text-xs italic text-gray-400">
-          Visitor is typing…
-        </p>
+        <p className="px-3 text-xs italic text-gray-600">Visitor is typing…</p>
       )}
+
+      <div className="border-t border-gray-700 p-3">
+        <input
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            sendTyping?.(true);
+            sendTyping?.(true);
+            clearTimeout((sendTyping as any)?._t);
+            (sendTyping as any)._t = setTimeout(() => {
+              sendTyping?.(false);
+            }, 1200);
+          }}
+          onKeyDown={(e) => {
+            unlockSound();
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder="Reply to visitor…"
+          className="w-full rounded-md border dark:placeholder-gray-400 border-gray-700 px-3 py-2 text-sm focus:outline-none"
+        />
+      </div>
     </div>
-
-    {/* Input */}
-    <div className="border-t border-gray-700 bg-gray-800 p-3">
-      <input
-  value={input}
-  onChange={(e) => {
-    setInput(e.target.value);
-
-    // 1️⃣ agent typing indicator
-    agentTypingRef.current?.(true);
-    setTimeout(() => agentTypingRef.current?.(false), 1200);
-
-    // 2️⃣ mark thread as read when agent starts typing
-    useChatStore.getState().markThreadRead(threadId);
-  }}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter') {
-      send();
-      agentTypingRef.current?.(false);
-    }
-  }}
-  placeholder="Reply to visitor…"
-  className="
-    w-full
-    rounded-md
-    bg-gray-900
-    border
-    border-gray-700
-    px-3
-    py-2
-    text-sm
-    text-white
-    focus:outline-none
-    focus:ring-0
-  "
-/>
-
-    </div>
-  </div>
-);
-
+  );
 }

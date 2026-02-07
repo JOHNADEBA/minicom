@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { toggleTheme, getTheme } from '@/lib/theme';
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { toggleTheme, getTheme } from "@/lib/theme";
 
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
-  const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
+  const [theme, setThemeState] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     setThemeState(getTheme());
@@ -32,10 +32,11 @@ export function ThemeToggle() {
         py-2
         text-sm
         text-white
+        cursor-pointer
         shadow
       "
     >
-      {theme === 'dark' ? '🌙' : '☀️'}
+      {theme === "dark" ? "🌙" : "☀️"}
     </button>
   );
 }

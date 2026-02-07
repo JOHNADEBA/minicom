@@ -1,8 +1,8 @@
-export type Role = 'visitor' | 'agent';
+import { Role, ROLE } from "./constants";
 
 export const getRole = (): Role => {
-    if (typeof window === 'undefined') return 'visitor';
-    return window.location.pathname.startsWith('/agent')
-        ? 'agent'
-        : 'visitor';
+  if (typeof window === "undefined") return ROLE.VISITOR; // default to visitor in SSR
+  return window.location.pathname.startsWith("/agent")
+    ? ROLE.AGENT
+    : ROLE.VISITOR; // default to visitor in SSR
 };

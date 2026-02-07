@@ -1,36 +1,259 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MiniCom – Real-Time Chat Interview Exercise
 
-## Getting Started
+MiniCom is a **real-time chat application** built as part of a technical interview exercise.
+It demonstrates frontend architecture, real-time messaging concepts, state management, resilience patterns, and UI/UX decisions using modern React tooling.
 
-First, run the development server:
+The project intentionally focuses on **clarity, correctness, and maintainability** rather than backend complexity.
+
+---
+
+## ✨ Features
+
+### Core Chat
+
+- Visitor ↔ Agent real-time messaging
+- Thread-based conversations
+- Agent inbox with unread counts
+- Message ordering by timestamp
+- Optimistic UI updates
+
+### Message States
+
+- `sending`
+- `sent`
+- `delivered`
+- `read`
+- `failed`
+
+> Only the **latest message sent by the current user** shows a delivery status (similar to real chat apps).
+
+---
+
+## 🔁 Real-Time & Resilience
+
+- Real-time simulation via **BroadcastChannel**
+- Delivery acknowledgements:
+  - sent → delivered → read
+
+- Typing indicators (visitor / agent)
+- Offline detection with banner
+- Failed message handling with **manual retry**
+- Offline message queue persisted in `localStorage`
+
+**Design decision:**
+Failed messages are **not automatically retried on page refresh** to avoid accidental duplicate sends. Retry is explicit and user-controlled.
+
+---
+
+## 🧠 Architecture & Design Decisions
+
+### State Management
+
+- **Zustand** for global chat state
+- Messages normalized by `threadId`
+- Derived UI state (unread counts, typing indicators, last-message status)
+
+### Persistence
+
+- Messages and offline queue stored in `localStorage`
+- State sanitized on load to prevent invalid delivery states
+
+### Role Awareness
+
+- Role (`visitor` / `agent`) inferred from route
+- Delivery & read receipts applied **only on sender side**
+- Receiver never stores message status
+
+---
+
+## 🎨 UI / UX
+
+- Responsive layout using **Tailwind CSS**
+- Floating visitor chat widget
+- Agent inbox + conversation view
+- Auto-scroll message list (with lazy loading for long histories)
+- Retry button for failed messages
+- Offline banner when network is unavailable
+
+---
+
+## 🌙 Theme Support
+
+- Light / Dark mode toggle
+- Theme persisted across sessions
+- Applied globally via `<html class="dark">`
+
+---
+
+## 🧪 Testing
+
+Minimum required tests are implemented:
+
+### 1. UI Interaction
+
+- Sending a message via keyboard (`Enter`)
+
+### 2. State Transitions
+
+- Message ordering by `createdAt`
+- Message status updates (`sending → delivered`)
+
+### 3. Edge Case
+
+- Failed message retry flow
+
+**Tools used**
+
+- Vitest
+- @testing-library/react
+
+---
+
+## 🛠️ Tech Stack
+
+- **Next.js (App Router)**
+- **React**
+- **TypeScript**
+- **Zustand**
+- **Tailwind CSS**
+- **Vitest**
+- **BroadcastChannel API**
+
+---
+
+## 📦 Import Order Convention
+
+All files follow a consistent import hierarchy for readability and maintainability:
+
+1. **React / Next.js**
+2. **Third-party libraries**
+3. **`lib/`**
+4. **`hooks/`**
+5. **`components/`**
+6. **Local files**
+
+Example:
+
+```ts
+import { useState, useEffect } from "react";
+
+import debounce from "lodash.debounce";
+
+import { deliver } from "@/lib/realtime";
+import { useOnline } from "@/hooks/useOnline";
+import { MessageList } from "@/components/shared/MessageList";
+```
+
+---
+
+## 📂 Project Structure (Simplified)
+
+```
+src/
+├─ app/
+│  ├─ agent/          # Agent inbox + threads
+│  ├─ visitor/        # Visitor chat widget
+│  ├─ not-found.tsx   # 404 page
+│
+├─ components/
+│  ├─ agent/
+│  ├─ visitor/
+│  ├─ shared/
+│  ├─ ui/
+│
+├─ hooks/
+│  ├─ useOnline.ts
+│  ├─ useTyping.ts
+│
+├─ store/
+│  └─ chatStore.ts
+│
+├─ lib/
+│  ├─ realtime.ts
+│  ├─ models.ts
+│  ├─ theme.ts
+│  ├─ persist.ts
+│
+├─ tests/
+│  ├─ chatStore.test.ts
+│  ├─ chatWidget.test.tsx
+│  └─ retry.test.ts
+```
+
+---
+
+## ▶️ Running the App Locally
+
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Run tests
 
-## Learn More
+```bash
+npm run test
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Deployment (Vercel)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This project is deployed on **Vercel**.
 
-## Deploy on Vercel
+To deploy your own version:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push the repository to GitHub
+2. Go to [https://vercel.com](https://vercel.com)
+3. Import the repository
+4. Use default Next.js settings
+5. Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No additional configuration is required.
+
+---
+
+## 🚫 Intentionally Out of Scope
+
+The following were deliberately excluded to keep the exercise focused:
+
+- Backend / database
+- Authentication
+- WebSockets or server infrastructure
+- Push notifications
+- Automatic retry on refresh
+- CI pipelines or git hooks
+
+---
+
+## 📝 Notes for Reviewers
+
+- Emphasis is on **correctness, resilience, and clean architecture**
+- Hydration safety and SSR edge cases were explicitly handled
+- UI behavior mirrors real-world chat applications
+- Code favors readability over unnecessary abstraction
+
+---
+
+## ✅ Summary
+
+This project demonstrates:
+
+- Real-time messaging logic
+- State consistency under failure
+- Clean React + Zustand architecture
+- Thoughtful UX decisions
+- Testable, maintainable code

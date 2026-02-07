@@ -1,16 +1,14 @@
-import { Component, ReactNode } from 'react';
+import { Component, ReactNode } from "react";
 
 export class ErrorBoundary extends Component<
-    { fallback: ReactNode; children: ReactNode },
-    { hasError: boolean }
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
 > {
-    state = { hasError: false };
-    static getDerivedStateFromError() {
-        return { hasError: true };
-    }
-    render() {
-        return this.state.hasError
-            ? this.props.fallback
-            : this.props.children;
-    }
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
 }

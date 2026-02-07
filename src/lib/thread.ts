@@ -1,7 +1,7 @@
-const THREAD_KEY = 'minicom:threadId';
+const THREAD_KEY = "minicom:threadId";
 
 export function getThreadId(): string {
-  if (typeof window === 'undefined') return 'server';
+  if (typeof window === "undefined") return "server";
 
   let id = sessionStorage.getItem(THREAD_KEY);
   if (!id) {
