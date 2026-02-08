@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Message } from "@/lib/models";
 import { MessageBubble } from "./MessageBubble";
-import { MESSAGE_STATUS } from "@/lib/constants";
 
 const PAGE_SIZE = 50;
-const BASE_SPACER = 40;
 
 interface Props {
   messages: Message[];
@@ -15,42 +13,27 @@ interface Props {
 
 export function MessageList({ messages, showStatusForId }: Props) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [spacerHeight, setSpacerHeight] = useState(BASE_SPACER);
-
   const containerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
   const visibleMessages = messages.slice(-visibleCount);
-  const lastMessage = visibleMessages[visibleMessages.length - 1];
 
-  // ✅ CLIENT-ONLY spacer adjustment (after hydration)
-  useEffect(() => {
-    if (!lastMessage || lastMessage.id !== showStatusForId) {
-      setSpacerHeight(BASE_SPACER);
-      return;
-    }
+  // ✅ SCROLL AFTER LAYOUT IS 100% READY
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-    if (lastMessage.status === MESSAGE_STATUS.FAILED) {
-      setSpacerHeight(70);
-    } else if (lastMessage.status) {
-      setSpacerHeight(56);
-    } else {
-      setSpacerHeight(BASE_SPACER);
-    }
-  }, [lastMessage?.id, lastMessage?.status, showStatusForId]);
-
-  // ✅ ALWAYS scroll fully to bottom
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
+    // two-frame scroll (this is the key)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight;
+      });
     });
-  }, [messages.length]);
+  }, [messages.length, showStatusForId]);
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 min-h-0 overflow-y-auto px-3 pt-3 space-y-2"
+      className="h-full overflow-y-auto px-2 sm:px-3 py-3 space-y-2"
       onScroll={(e) => {
         const el = e.currentTarget;
         if (el.scrollTop === 0 && visibleCount < messages.length) {
@@ -65,9 +48,6 @@ export function MessageList({ messages, showStatusForId }: Props) {
           showStatus={m.id === showStatusForId}
         />
       ))}
-
-      {/* 🔑 STABLE SSR SAFE SPACER */}
-      <div ref={bottomRef} style={{ height: spacerHeight }} />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function MessageBubble({ message, showStatus = false }: Props) {
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`relative max-w-[75%] rounded-lg px-3 py-2 text-sm shadow ${
+        className={`relative max-w-[85%] md:max-w-[75%] rounded-lg px-3 py-2 text-sm shadow ${
           isMine ? "bg-blue-900 text-white" : "bg-gray-700 text-white"
         }`}
       >

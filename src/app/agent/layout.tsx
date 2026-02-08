@@ -32,30 +32,35 @@ export default function AgentLayout({
   );
 
   return (
-    <div className="h-screen flex">
-      {/* Inbox */}
-      <aside className="w-80 border-r border-gray-700 p-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Inbox</h2>
+    <div className="h-full flex flex-col">
+      {/* MOBILE */}
+      <div className="md:hidden flex-1 min-h-0">{children}</div>
 
-          {mounted && totalUnread > 0 && (
-            <div className="relative">
-              {/* message icon */}
-              <span className="text-2xl">💬</span>
+      {/* DESKTOP */}
+      <div className="hidden md:flex flex-1 min-h-0">
+        {/* Inbox */}
+        <aside className="w-80 shrink-0 border-r border-gray-700 p-4 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Inbox</h2>
 
-              {/* badge */}
-              <div className="absolute -top-2 -right-2">
-                <UnreadBadge count={totalUnread} size="md" />
+            {mounted && totalUnread > 0 && (
+              <div className="relative">
+                <span className="text-2xl">💬</span>
+                <div className="absolute -top-2 -right-2">
+                  <UnreadBadge count={totalUnread} size="md" />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <InboxList />
-      </aside>
+          <InboxList />
+        </aside>
 
-      {/* Chat area */}
-      <main className="flex-1">{children}</main>
+        {/* Chat area */}
+        <main className="flex-1 min-w-0 min-h-0 overflow-hidden">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

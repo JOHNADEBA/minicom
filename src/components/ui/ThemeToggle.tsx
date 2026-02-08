@@ -12,7 +12,7 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null; // 🔑 hydration-safe
+  if (!mounted) return null;
 
   return (
     <button
@@ -22,18 +22,15 @@ export function ThemeToggle() {
       }}
       aria-label="Toggle theme"
       className="
-        fixed
-        bottom-4
-        left-8
-        z-50
         rounded-full
         bg-gray-700
         px-3
         py-2
         text-sm
         text-white
-        cursor-pointer
         shadow
+        hover:bg-gray-600
+        cursor-pointer
       "
     >
       {theme === "dark" ? "🌙" : "☀️"}

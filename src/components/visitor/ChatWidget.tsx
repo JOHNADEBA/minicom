@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import type { KeyboardEvent, ChangeEvent } from "react";
 import { v4 as uuid } from "uuid";
 
 import { useChatStore } from "@/store/chatStore";
 
 import { deliver } from "@/lib/realtime";
 import { getThreadId } from "@/lib/thread";
-import { Message } from "@/lib/models";
+import type { Message } from "@/lib/models";
 import { playSound, unlockSound } from "@/lib/sound";
 import { MESSAGE_STATUS, ROLE } from "@/lib/constants";
 
@@ -30,18 +29,31 @@ export function ChatWidget() {
 
   const online = useOnline();
 
-  // initialize visitor thread
+  /* --------------------------------------------
+   * Init thread + ESC close
+   * ------------------------------------------ */
   useEffect(() => {
     setThreadId(getThreadId());
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-      }
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  /* --------------------------------------------
+   * 🔒 BODY SCROLL LOCK (critical)
+   * ------------------------------------------ */
+  useEffect(() => {
+    if (!open) return;
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   const allMessages = useChatStore((s) => s.messages);
   const agentTyping = useChatStore((s) =>
@@ -55,6 +67,9 @@ export function ChatWidget() {
     return allMessages[threadId] ?? EMPTY_MESSAGES;
   }, [allMessages, threadId]);
 
+  /* --------------------------------------------
+   * 🔔 Play sound ONLY on new agent message
+   * ------------------------------------------ */
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last) return;
@@ -62,7 +77,6 @@ export function ChatWidget() {
     if (lastMessageIdRef.current === last.id) return;
     lastMessageIdRef.current = last.id;
 
-    // 🔔 visitor hears agent ONLY on new message
     if (last.sender === ROLE.AGENT) {
       playSound();
     }
@@ -100,7 +114,7 @@ export function ChatWidget() {
 
   return (
     <div className="fixed bottom-4 right-4 z-40">
-      {/* Chat launcher */}
+      {/* 💬 Launcher */}
       <button
         onClick={() => setOpen((o) => !o)}
         className="text-3xl cursor-pointer"
@@ -110,36 +124,79 @@ export function ChatWidget() {
       </button>
 
       {open && (
-        <div className="mt-2 w-80 h-96 border border-gray-700 rounded-lg shadow-xl flex flex-col ">
-          {/* Header */}
-          <div className="px-3 py-2 border-b border-gray-700 text-sm font-medium ">
-            Live Support
-          </div>
+        <>
+          {/* 🔒 STRONG BACKDROP (mobile only) */}
+          <div
+            className="
+              fixed inset-0
+              bg-black/70
+              backdrop-blur-[2px]
+              md:hidden
+              z-40
+            "
+            onClick={() => setOpen(false)}
+          />
 
-          {!online && <OfflineBanner />}
+          {/* 💬 CHAT PANEL */}
+          <div
+            className="
+              fixed inset-0
+              md:inset-auto
+              md:bottom-16
+              md:right-4
+              md:w-80
+              md:h-96
+              bg-background
+              border border-gray-700
+              md:rounded-lg
+              shadow-2xl
+              flex flex-col
+              z-50
+            "
+          >
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-gray-700 text-sm font-medium">
+              <span>Live Support</span>
 
-          {/* Messages */}
-          <MessageList messages={messages} showStatusForId={showStatusForId} />
-
-          {/* Typing indicator */}
-          {agentTyping && (
-            <div className="px-3 pb-1">
-              <p className="text-xs italic text-gray-600">Agent is typing…</p>
+              <button
+                className="md:hidden text-lg cursor-pointer"
+                onClick={() => setOpen(false)}
+                aria-label="Close chat"
+              >
+                ✕
+              </button>
             </div>
-          )}
 
-          {/* Input */}
-          <div className="border-t border-gray-700 p-2">
-            <ChatInput
-              value={input}
-              placeholder="Type a message…"
-              onFocus={unlockSound}
-              onChange={setInput}
-              onTyping={sendTyping}
-              onSend={send}
-            />
+            {!online && <OfflineBanner />}
+
+            {/* Messages (ONLY SCROLLER) */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <MessageList
+                messages={messages}
+                showStatusForId={showStatusForId}
+              />
+            </div>
+
+            {/* Typing indicator */}
+            {agentTyping && (
+              <p className="shrink-0 px-3 py-1 text-xs italic text-gray-500">
+                Agent is typing…
+              </p>
+            )}
+
+            {/* Input (always visible) */}
+            <div className="shrink-0 border-t border-gray-700 p-2">
+              <ChatInput
+                value={input}
+                placeholder="Type a message…"
+                onFocus={unlockSound}
+                onChange={setInput}
+                onTyping={sendTyping}
+                onSend={send}
+              />
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

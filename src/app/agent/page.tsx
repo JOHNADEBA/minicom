@@ -1,9 +1,11 @@
 "use client";
 
-export default function AgentEmptyState() {
+import { InboxList } from "@/components/agent/InboxList";
+
+export default function AgentPage() {
   return (
-    <div className="h-full flex items-center justify-center text-gray-400">
-      Select a conversation from the inbox
+    <div className="h-full md:hidden">
+      <InboxList />
     </div>
   );
 }

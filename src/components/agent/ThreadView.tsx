@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 
 import { useChatStore } from "@/store/chatStore";
@@ -25,15 +26,16 @@ export function ThreadView({ threadId }: { threadId: string }) {
   const typing = useChatStore((s) => s.typing[`${threadId}:${ROLE.VISITOR}`]);
   const messages = useChatStore((s) => s.messages[threadId] ?? EMPTY_MESSAGES);
   const visitorLabel = getVisitorLabel(threadId);
+  const prevCountRef = useRef(messages.length);
+
+  const router = useRouter();
   const lastMessage = messages[messages.length - 1];
-  const lastMessageIdRef = useRef<string | null>(null);
+  const sendTyping = useTyping(threadId, ROLE.AGENT);
 
   const showStatusForId =
     lastMessage && lastMessage.sender === ROLE.AGENT
       ? lastMessage.id
       : undefined;
-
-  const sendTyping = useTyping(threadId, ROLE.AGENT);
 
   useEffect(() => {
     messages
@@ -49,19 +51,19 @@ export function ThreadView({ threadId }: { threadId: string }) {
   }, [threadId]);
 
   useEffect(() => {
-    const last = messages[messages.length - 1];
+    const prevCount = prevCountRef.current;
+    const nextCount = messages.length;
 
-    if (!last) return;
+    if (nextCount > prevCount) {
+      const last = messages[nextCount - 1];
 
-    // ❗ only react to NEW messages
-    if (lastMessageIdRef.current === last.id) return;
-
-    lastMessageIdRef.current = last.id;
-
-    // 🔔 agent hears visitor
-    if (last.sender === ROLE.VISITOR) {
-      playSound();
+      // 🔔 ONLY when a NEW visitor message arrives
+      if (last.sender === ROLE.VISITOR) {
+        playSound();
+      }
     }
+
+    prevCountRef.current = nextCount;
   }, [messages]);
 
   const send = () => {
@@ -98,20 +100,38 @@ export function ThreadView({ threadId }: { threadId: string }) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col ">
-      <div className="px-4 py-3 border-b border-gray-700">
-        <h3 className="font-medium">{visitorLabel}</h3>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      {/* Thread header */}
+      <div className="shrink-0 px-4 py-3 border-b border-gray-700 flex items-center gap-3">
+        <button
+          className="md:hidden text-sm text-gray-400 cursor-pointer"
+          onClick={() => router.push("/agent")}
+        >
+          ← Inbox
+        </button>
+
+        <h3 className="font-medium truncate">{visitorLabel}</h3>
       </div>
 
       {!online && <OfflineBanner />}
 
-      <MessageList messages={messages} showStatusForId={showStatusForId} />
+      {/* ✅ THE ONLY SCROLLER */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <MessageList
+          key={threadId}
+          messages={messages}
+          showStatusForId={showStatusForId}
+        />
+      </div>
 
       {typing && (
-        <p className="px-3 text-xs italic text-gray-600">Visitor is typing…</p>
+        <p className="shrink-0 px-3 py-1 text-xs italic text-gray-600">
+          Visitor is typing…
+        </p>
       )}
 
-      <div className="border-t border-gray-700 p-3">
+      {/* Input always visible */}
+      <div className="shrink-0 border-t border-gray-700 p-3 bg-background">
         <ChatInput
           value={input}
           placeholder="Reply to visitor…"
