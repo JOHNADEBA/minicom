@@ -29,9 +29,8 @@ export function ChatWidget() {
 
   const online = useOnline();
 
-  /* --------------------------------------------
-   * Init thread + ESC close
-   * ------------------------------------------ */
+  //  Init thread + ESC close
+
   useEffect(() => {
     setThreadId(getThreadId());
 
@@ -43,9 +42,8 @@ export function ChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  /* --------------------------------------------
-   * 🔒 BODY SCROLL LOCK (critical)
-   * ------------------------------------------ */
+  // BODY SCROLL LOCK (critical)
+
   useEffect(() => {
     if (!open) return;
 
@@ -67,9 +65,8 @@ export function ChatWidget() {
     return allMessages[threadId] ?? EMPTY_MESSAGES;
   }, [allMessages, threadId]);
 
-  /* --------------------------------------------
-   * 🔔 Play sound ONLY on new agent message
-   * ------------------------------------------ */
+  // Play sound ONLY on new agent message
+
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last) return;
